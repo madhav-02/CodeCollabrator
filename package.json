@@ -1,0 +1,19 @@
+{
+  "name": "livecode",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Shareable rooms with one collaborative code editor. No code execution.",
+  "workspaces": [
+    "client",
+    "server"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace server",
+    "dev:client": "npm run dev --workspace client",
+    "build": "npm run build --workspace client",
+    "typecheck": "npm run typecheck --workspace client && npm run typecheck --workspace server"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
