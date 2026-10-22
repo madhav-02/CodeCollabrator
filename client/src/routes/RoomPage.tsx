@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { canWrite } from '@shared/types';
 import type { Role } from '@shared/types';
+import { ConnectionStatus } from '../components/ConnectionStatus';
 import { Header } from '../components/Header';
 import { LanguagePicker } from '../components/LanguagePicker';
 import { Sheet } from '../components/Sheet';
@@ -76,7 +77,7 @@ function PanelBody({ name }: { name: PanelName }) {
 
 function RoomView({ roomId }: { roomId: string }) {
   const transport = useTransport();
-  const { role, language, closed } = useRoom();
+  const { role, language, closed, status } = useRoom();
   const currentTheme = useStore(theme);
   const narrow = useMediaQuery(NARROW);
   const [openPanel, setOpenPanel] = useState<PanelName | null>(null);
@@ -91,6 +92,7 @@ function RoomView({ roomId }: { roomId: string }) {
   return (
     <div className="app">
       <Header roomId={roomId}>
+        <ConnectionStatus status={status} />
         <LanguagePicker
           value={language}
           onChange={transport.setLanguage}
