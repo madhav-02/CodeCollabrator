@@ -18,3 +18,14 @@ export function toBytes(data: RawData): Uint8Array {
   if (Array.isArray(data)) return new Uint8Array(Buffer.concat(data));
   return new Uint8Array(data as ArrayBuffer);
 }
+
+/**
+ * Decode a text frame. Must not go through toBytes: calling toString() on a
+ * Uint8Array gives "123,34,116,…" rather than the decoded text, which silently
+ * turns every control message into unparseable JSON.
+ */
+export function toText(data: RawData): string {
+  if (Buffer.isBuffer(data)) return data.toString('utf8');
+  if (Array.isArray(data)) return Buffer.concat(data).toString('utf8');
+  return Buffer.from(data as ArrayBuffer).toString('utf8');
+}

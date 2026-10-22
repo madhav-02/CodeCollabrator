@@ -2,6 +2,7 @@ import {
   createContext,
   useContext,
   useEffect,
+  useRef,
   useState,
   useSyncExternalStore,
   type ReactNode,
@@ -32,33 +33,45 @@ export function RoomProvider({
   fallback = null,
   children,
 }: Props) {
-  const { userId, name, color } = useStore(identity);
+  const { name } = useStore(identity);
+  // Only whether a name exists affects connecting, not what it is — otherwise
+  // renaming would tear down the socket.
+  const named = name !== null;
 
   // Built inside an effect so React's StrictMode double-mount cannot leave an
-  // orphaned instance behind. That matters far more in T2.4, where this owns a
-  // live socket rather than a local document.
+  // orphaned instance behind, which matters because this owns a live socket.
   const [transport, setTransport] = useState<RoomTransport | null>(null);
+  const sentName = useRef<string | null>(null);
 
   useEffect(() => {
+    const me = identity.get();
     // Nobody joins anonymously; the name prompt is covering the screen (R25).
-    if (!name) return;
+    if (!me.name) return;
 
     const created = createSocketTransport({
       roomId,
       role: claimedRole,
       token,
-      me: { userId, name, color },
+      me: { userId: me.userId, name: me.name, color: me.color },
       defaultLanguage,
     });
+    sentName.current = me.name;
     setTransport(created);
 
     return () => {
       created.destroy();
+      sentName.current = null;
       setTransport(null);
     };
-    // Renaming currently reconnects. Once the roster can edit a name (T3.2) this
-    // should send a rename message instead.
-  }, [roomId, claimedRole, token, defaultLanguage, userId, name, color]);
+  }, [roomId, claimedRole, token, defaultLanguage, named]);
+
+  // A later rename is a message, not a reconnection.
+  useEffect(() => {
+    if (!transport || !name) return;
+    if (sentName.current === name) return;
+    sentName.current = name;
+    transport.rename(name);
+  }, [transport, name]);
 
   if (!transport) return <>{fallback}</>;
 

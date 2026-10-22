@@ -69,10 +69,13 @@ export function createSocketTransport(opts: TransportOptions): RoomTransport {
   /** Some closes are final: no amount of retrying will help. */
   const isFinal = () => snapshot.closed !== null;
 
+  // Mutable, because a rename must not require reconnecting.
+  let myName = opts.me.name;
+
   function publishPresence(role = snapshot.role): void {
     awareness.setLocalStateField('user', {
       userId: opts.me.userId,
-      name: opts.me.name,
+      name: myName,
       color: opts.me.color,
       role,
     });
@@ -85,7 +88,8 @@ export function createSocketTransport(opts: TransportOptions): RoomTransport {
       room: opts.roomId,
       token: opts.token,
       user: opts.me.userId,
-      name: opts.me.name,
+      // Read at call time, so a reconnect after a rename carries the new name.
+      name: myName,
     });
     const scheme = location.protocol === 'https:' ? 'wss:' : 'ws:';
     // Same origin, so the server's origin check passes and dev needs no CORS.
@@ -262,6 +266,16 @@ export function createSocketTransport(opts: TransportOptions): RoomTransport {
     sendChat(text) {
       const trimmed = text.trim();
       if (trimmed) sendControl({ t: 'chat', text: trimmed });
+    },
+
+    rename(name) {
+      const trimmed = name.trim();
+      if (!trimmed || trimmed === myName) return;
+      myName = trimmed;
+      // The roster comes from the server, the cursor label from presence, so both
+      // have to be told.
+      publishPresence();
+      sendControl({ t: 'rename', name: trimmed });
     },
 
     promote: (userId) => sendControl({ t: 'promote', userId }),

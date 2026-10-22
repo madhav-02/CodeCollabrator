@@ -1,11 +1,11 @@
 import type { IncomingMessage } from 'node:http';
 import type { RawData, WebSocket } from 'ws';
-import { LIMITS, colorFor, type CloseReason, type Participant } from '@shared/types';
-import { getRoom, resolveRole, type Connection, type Room } from './rooms';
+import { LIMITS, colorFor, type CloseReason } from '@shared/types';
+import { handleControlMessage } from './control';
+import { getRoom, resolveRole, type Connection } from './rooms';
+import { broadcastRoster, cleanName } from './roster';
 import { clearPresence, handleBinary, sendInitialSync } from './sync';
-import { sendControl, toBytes } from './wire';
-
-const MAX_NAME = 32;
+import { sendControl, toBytes, toText } from './wire';
 
 /** The client generates a UUID; anything outside this is not from our client. */
 const SAFE_USER_ID = /^[A-Za-z0-9_-]{8,64}$/;
@@ -17,35 +17,6 @@ const SAFE_USER_ID = /^[A-Za-z0-9_-]{8,64}$/;
 function refuse(socket: WebSocket, reason: CloseReason): void {
   sendControl(socket, { t: 'closed', reason });
   socket.close(1008, reason);
-}
-
-/**
- * Names are supplied by the client and shown to everyone else, so control
- * characters are stripped — otherwise a name could break the roster layout or
- * inject newlines into chat.
- */
-function cleanName(raw: string | null): string {
-  const text = (raw ?? '')
-    .replace(/\p{C}/gu, '')
-    .trim()
-    .slice(0, MAX_NAME);
-  return text || 'Anonymous';
-}
-
-export function participantsOf(room: Room): Participant[] {
-  return [...room.connections].map(({ userId, name, color, role }) => ({
-    userId,
-    name,
-    color,
-    role,
-  }));
-}
-
-export function broadcastRoster(room: Room): void {
-  const users = participantsOf(room);
-  for (const conn of room.connections) {
-    sendControl(conn.socket, { t: 'roster', users });
-  }
 }
 
 export function handleJoin(socket: WebSocket, req: IncomingMessage): void {
@@ -103,7 +74,7 @@ export function handleJoin(socket: WebSocket, req: IncomingMessage): void {
       handleBinary(conn, room, toBytes(data));
       return;
     }
-    // Client control messages (chat, host actions) arrive in T3.3 and T4.1.
+    handleControlMessage(conn, room, toText(data));
   });
 
   socket.on('close', () => {

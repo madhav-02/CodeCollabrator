@@ -5,6 +5,7 @@ import type { Role } from '@shared/types';
 import { ConnectionStatus } from '../components/ConnectionStatus';
 import { Header } from '../components/Header';
 import { LanguagePicker } from '../components/LanguagePicker';
+import { Roster } from '../components/Roster';
 import { Sheet } from '../components/Sheet';
 import { CodeEditor } from '../editor/CodeEditor';
 import { collabExtensions } from '../editor/collab';
@@ -64,12 +65,10 @@ function Shell({ roomId, message }: { roomId: string; message: string }) {
 }
 
 function PanelBody({ name }: { name: PanelName }) {
-  const { participants, chat } = useRoom();
+  const { chat } = useRoom();
 
   return name === 'people' ? (
-    <div className="placeholder">
-      {participants.length} here. Participant list arrives in T3.2.
-    </div>
+    <Roster />
   ) : (
     <div className="placeholder">{chat.length} messages. Chat UI arrives in T4.2.</div>
   );

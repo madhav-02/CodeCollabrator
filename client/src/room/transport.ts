@@ -54,6 +54,8 @@ export interface RoomTransport {
   setLanguage(name: string): void;
   /** Everyone may chat, viewers included (R33). */
   sendChat(text: string): void;
+  /** Change the name others see, without reconnecting (R26, R27). */
+  rename(name: string): void;
 
   // Host-only. The server ignores these from anyone else (R17).
   promote(userId: string): void;
