@@ -4,9 +4,10 @@
 // anything host-only is checked against the role the server resolved, never against
 // what the client claims (R17).
 
-import type { ClientControl, Role } from '@shared/types';
+import { LIMITS, type ChatMessage, type ClientControl, type Role } from '@shared/types';
 import { closeRoom, type Connection, type Room } from './rooms';
 import { broadcastRoster, cleanName } from './roster';
+import { randomToken } from './tokens';
 import { sendControl } from './wire';
 
 function parse(raw: string): ClientControl | null {
@@ -56,6 +57,48 @@ function removeParticipant(room: Room, userId: string): void {
   // The close handler takes them out of the room and re-broadcasts the roster.
 }
 
+const CHAT_WINDOW_MS = 5_000;
+const CHAT_PER_WINDOW = 5;
+
+/**
+ * Chat travels on this channel rather than inside the document, because the
+ * document rejects writes from viewers and viewers are allowed to chat (R33).
+ *
+ * A useful side effect: the server stamps the sender from the connection, so a
+ * message cannot be posted under somebody else's name.
+ */
+function postChat(conn: Connection, room: Room, rawText: string): void {
+  const text = rawText.replace(/\p{Cc}/gu, ' ').trim().slice(0, LIMITS.maxChatLength);
+  if (!text) return;
+
+  const now = Date.now();
+  conn.chatTimes = conn.chatTimes.filter((at) => now - at < CHAT_WINDOW_MS);
+  if (conn.chatTimes.length >= CHAT_PER_WINDOW) {
+    sendControl(conn.socket, { t: 'rejected', message: 'Slow down a moment.' });
+    return;
+  }
+  conn.chatTimes.push(now);
+
+  const chatMessage: ChatMessage = {
+    id: randomToken(12),
+    userId: conn.userId,
+    name: conn.name,
+    color: conn.color,
+    text,
+    at: now,
+  };
+
+  room.chat.push(chatMessage);
+  // Bounded, because a room can live an hour and this is all in memory (N2, N7).
+  if (room.chat.length > LIMITS.chatHistory) {
+    room.chat.splice(0, room.chat.length - LIMITS.chatHistory);
+  }
+
+  for (const peer of room.connections) {
+    sendControl(peer.socket, { t: 'chat', message: chatMessage });
+  }
+}
+
 export function handleControlMessage(conn: Connection, room: Room, raw: string): void {
   const message = parse(raw);
   if (!message) return;
@@ -95,6 +138,12 @@ export function handleControlMessage(conn: Connection, room: Room, raw: string):
       if (!requireHost(conn)) return;
       console.log(`[livecode] room ${room.id}: ended by ${conn.name}`);
       closeRoom(room, 'ended');
+      return;
+    }
+
+    case 'chat': {
+      if (typeof message.text !== 'string') return;
+      postChat(conn, room, message.text);
       return;
     }
 

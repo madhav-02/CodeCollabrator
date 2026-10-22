@@ -56,6 +56,7 @@ export function handleJoin(socket: WebSocket, req: IncomingMessage): void {
     color: colorFor(userId),
     role,
     awarenessIds: new Set(),
+    chatTimes: [],
   };
 
   room.connections.add(conn);
@@ -66,6 +67,10 @@ export function handleJoin(socket: WebSocket, req: IncomingMessage): void {
 
   sendControl(socket, { t: 'role', role });
   broadcastRoster(room);
+  // Someone arriving at minute 40 should see what was said earlier (R34).
+  if (room.chat.length > 0) {
+    sendControl(socket, { t: 'chatHistory', messages: room.chat });
+  }
   sendInitialSync(conn, room);
 
   socket.on('message', (data: RawData, isBinary: boolean) => {

@@ -21,6 +21,8 @@ export interface Connection extends Participant {
   roomId: string;
   /** Presence ids this connection owns, cleared when it drops. */
   awarenessIds: Set<number>;
+  /** Timestamps of recent chat messages, for rate limiting (N7). */
+  chatTimes: number[];
 }
 
 export interface Room {
