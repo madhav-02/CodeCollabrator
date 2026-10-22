@@ -4,7 +4,7 @@
 
 import * as Y from 'yjs';
 import { Awareness } from 'y-protocols/awareness';
-import { COLORS, type ChatMessage, type Participant, type Role } from '@shared/types';
+import { COLORS, DOC, type ChatMessage, type Participant, type Role } from '@shared/types';
 import { randomId } from '../lib/ids';
 import type { RoomSnapshot, RoomTransport, TransportOptions } from './transport';
 
@@ -22,7 +22,7 @@ function demoParticipants(): Participant[] {
 export function createOfflineTransport(opts: TransportOptions): RoomTransport {
   const doc = new Y.Doc();
   const awareness = new Awareness(doc);
-  const meta = doc.getMap('meta');
+  const meta = doc.getMap(DOC.meta);
   const listeners = new Set<() => void>();
 
   if (!meta.has('language')) meta.set('language', opts.defaultLanguage);

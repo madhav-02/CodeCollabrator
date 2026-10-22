@@ -98,3 +98,14 @@ export const COLORS = [
   '#9333ea',
   '#c2410c',
 ] as const;
+
+/**
+ * Root keys inside each room's Yjs document. Client and server must agree, so they
+ * live here rather than being spelled out at each call site.
+ */
+export const DOC = {
+  /** Y.Text: the code itself */
+  content: 'content',
+  /** Y.Map: room settings, currently just `language` */
+  meta: 'meta',
+} as const;

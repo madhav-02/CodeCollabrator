@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { canWrite } from '@shared/types';
 import type { Role } from '@shared/types';
@@ -6,6 +6,7 @@ import { Header } from '../components/Header';
 import { LanguagePicker } from '../components/LanguagePicker';
 import { Sheet } from '../components/Sheet';
 import { CodeEditor } from '../editor/CodeEditor';
+import { collabExtensions } from '../editor/collab';
 import { DEFAULT_LANGUAGE } from '../editor/languages';
 import { useStore } from '../lib/store';
 import { theme } from '../lib/theme';
@@ -71,6 +72,8 @@ function RoomView({ roomId }: { roomId: string }) {
   const currentTheme = useStore(theme);
   const narrow = useMediaQuery(NARROW);
   const [openPanel, setOpenPanel] = useState<PanelName | null>(null);
+  // Stable for the room's lifetime; the editor reads it once, on mount.
+  const collab = useMemo(() => collabExtensions(transport), [transport]);
 
   // The room is gone; say why rather than showing an empty editor (R7).
   if (closed) return <Expired reason={closed} />;
@@ -93,6 +96,9 @@ function RoomView({ roomId }: { roomId: string }) {
             language={language}
             dark={currentTheme === 'dark'}
             readOnly={!mayWrite}
+            extensions={collab}
+            // Yjs owns undo now, so CodeMirror's own history must go (R14).
+            localHistory={false}
           />
         </div>
 
