@@ -89,6 +89,15 @@ export function Roster() {
       )}
 
       {myRole === 'host' && <EndRoomButton />}
+
+      {/*
+        No countdown: with an idle timer the clock only starts once nobody is left
+        to read it. A plain statement of the rules is more use (T5.4).
+      */}
+      <p className="roster-note muted">
+        This room closes when the host leaves, or an hour after everyone has gone.
+        Nothing is saved.
+      </p>
     </div>
   );
 }

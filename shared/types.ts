@@ -37,9 +37,11 @@ export const CLOSE_TEXT: Record<CloseReason, string> = {
   hostLeft: 'The host left, so the room closed.',
   removed: 'You were removed from this room.',
   expired: 'This room has expired.',
-  notFound: 'That room does not exist.',
+  // A swept room and a mistyped link are indistinguishable by the time anyone
+  // asks, so the wording covers both rather than guessing.
+  notFound: 'That room has closed, or the link is wrong.',
   badToken: 'That link is not valid.',
-  full: 'This room is full.',
+  full: 'This room is full. It holds 25 people.',
 };
 
 /** Browser to server. */
