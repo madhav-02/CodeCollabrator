@@ -1,7 +1,8 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { canWrite } from '@shared/types';
 import type { Role } from '@shared/types';
+import { Chat } from '../components/Chat';
 import { ConnectionStatus } from '../components/ConnectionStatus';
 import { Header } from '../components/Header';
 import { LanguagePicker } from '../components/LanguagePicker';
@@ -66,21 +67,23 @@ function Shell({ roomId, message }: { roomId: string; message: string }) {
 }
 
 function PanelBody({ name }: { name: PanelName }) {
-  const { chat } = useRoom();
-
-  return name === 'people' ? (
-    <Roster />
-  ) : (
-    <div className="placeholder">{chat.length} messages. Chat UI arrives in T4.2.</div>
-  );
+  return name === 'people' ? <Roster /> : <Chat />;
 }
 
 function RoomView({ roomId }: { roomId: string }) {
   const transport = useTransport();
-  const { role, language, closed, status } = useRoom();
+  const { role, language, closed, status, chat } = useRoom();
   const currentTheme = useStore(theme);
   const narrow = useMediaQuery(NARROW);
   const [openPanel, setOpenPanel] = useState<PanelName | null>(null);
+  const [seenChat, setSeenChat] = useState(0);
+
+  // On a wide screen the transcript is always on display, so nothing is unread.
+  const chatVisible = !narrow || openPanel === 'chat';
+  useEffect(() => {
+    if (chatVisible) setSeenChat(chat.length);
+  }, [chatVisible, chat.length]);
+  const unread = Math.max(0, chat.length - seenChat);
   // Rebuilt if the role changes, since that decides whether we publish a cursor.
   const collab = useMemo(() => collabExtensions(transport, role), [transport, role]);
 
@@ -139,6 +142,12 @@ function RoomView({ roomId }: { roomId: string }) {
           </button>
           <button className="btn" onClick={() => setOpenPanel('chat')}>
             Chat
+            {unread > 0 && (
+              <>
+                <span className="unread-dot" aria-hidden="true" />
+                <span className="sr-only">{unread} unread messages</span>
+              </>
+            )}
           </button>
         </nav>
       )}
