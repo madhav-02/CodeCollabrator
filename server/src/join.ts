@@ -1,24 +1,14 @@
 import type { IncomingMessage } from 'node:http';
-import { WebSocket, type RawData } from 'ws';
-import {
-  LIMITS,
-  colorFor,
-  type CloseReason,
-  type Participant,
-  type ServerControl,
-} from '@shared/types';
+import type { RawData, WebSocket } from 'ws';
+import { LIMITS, colorFor, type CloseReason, type Participant } from '@shared/types';
 import { getRoom, resolveRole, type Connection, type Room } from './rooms';
-import { clearPresence, handleBinary, sendInitialSync, toBytes } from './sync';
+import { clearPresence, handleBinary, sendInitialSync } from './sync';
+import { sendControl, toBytes } from './wire';
 
 const MAX_NAME = 32;
 
 /** The client generates a UUID; anything outside this is not from our client. */
 const SAFE_USER_ID = /^[A-Za-z0-9_-]{8,64}$/;
-
-/** Control messages travel as text. Binary frames are Yjs (T2.4). */
-export function sendControl(socket: WebSocket, message: ServerControl): void {
-  if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify(message));
-}
 
 /**
  * Say why before closing, so the client can show the right page rather than a
@@ -109,7 +99,7 @@ export function handleJoin(socket: WebSocket, req: IncomingMessage): void {
 
   socket.on('message', (data: RawData, isBinary: boolean) => {
     if (isBinary) {
-      // T2.5 adds the viewer check here. Until then any role can write.
+      // Role is checked inside, per message kind (R18).
       handleBinary(conn, room, toBytes(data));
       return;
     }

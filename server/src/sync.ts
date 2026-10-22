@@ -9,21 +9,12 @@ import * as decoding from 'lib0/decoding';
 import * as encoding from 'lib0/encoding';
 import * as awarenessProtocol from 'y-protocols/awareness';
 import * as syncProtocol from 'y-protocols/sync';
-import { WebSocket, type RawData } from 'ws';
+import { canWrite } from '@shared/types';
 import type { Connection, Room } from './rooms';
+import { sendBinary as send, sendControl } from './wire';
 
 export const MSG_SYNC = 0;
 export const MSG_AWARENESS = 1;
-
-function send(socket: WebSocket, data: Uint8Array): void {
-  if (socket.readyState === WebSocket.OPEN) socket.send(data, { binary: true });
-}
-
-export function toBytes(data: RawData): Uint8Array {
-  if (Buffer.isBuffer(data)) return new Uint8Array(data.buffer, data.byteOffset, data.byteLength);
-  if (Array.isArray(data)) return new Uint8Array(Buffer.concat(data));
-  return new Uint8Array(data as ArrayBuffer);
-}
 
 /** On arrival: ask what they have, and hand over the presence we know about. */
 export function sendInitialSync(conn: Connection, room: Room): void {
@@ -44,22 +35,59 @@ export function sendInitialSync(conn: Connection, room: Room): void {
   }
 }
 
+/** Connections already told once that they cannot write, to avoid log spam. */
+const warned = new WeakSet<Connection>();
+
+/**
+ * The read-only rule, enforced here rather than in the browser (R18).
+ *
+ * The sync protocol has three kinds of message. A step-1 message only asks what
+ * the server has, so it is safe for anyone. Step 2 and update both carry document
+ * changes, so for a viewer they are dropped on the floor. Disabling the editor in
+ * the browser is a courtesy; this is the control.
+ */
+function handleSync(conn: Connection, room: Room, decoder: decoding.Decoder): void {
+  const kind = decoding.readVarUint(decoder);
+
+  if (kind === syncProtocol.messageYjsSyncStep1) {
+    const reply = encoding.createEncoder();
+    encoding.writeVarUint(reply, MSG_SYNC);
+    syncProtocol.readSyncStep1(decoder, reply, room.doc);
+    send(conn.socket, encoding.toUint8Array(reply));
+    return;
+  }
+
+  if (!canWrite(conn.role)) {
+    if (!warned.has(conn)) {
+      warned.add(conn);
+      console.warn(`[livecode] room ${room.id}: dropped a write from viewer ${conn.name}`);
+      sendControl(conn.socket, { t: 'rejected', message: 'You have view-only access.' });
+    }
+    return;
+  }
+
+  // The connection is the transaction origin, so the relay does not echo the
+  // update back to whoever sent it.
+  if (kind === syncProtocol.messageYjsSyncStep2) {
+    syncProtocol.readSyncStep2(decoder, room.doc, conn);
+  } else if (kind === syncProtocol.messageYjsUpdate) {
+    syncProtocol.readUpdate(decoder, room.doc, conn);
+  }
+}
+
 export function handleBinary(conn: Connection, room: Room, data: Uint8Array): void {
   const decoder = decoding.createDecoder(data);
   const type = decoding.readVarUint(decoder);
 
   if (type === MSG_SYNC) {
-    const reply = encoding.createEncoder();
-    encoding.writeVarUint(reply, MSG_SYNC);
-    // The connection is the transaction origin, so the relay below knows not to
-    // echo the update back to whoever sent it.
-    syncProtocol.readSyncMessage(decoder, reply, room.doc, conn);
-    // Length 1 means nothing beyond the type byte, so there is no reply to make.
-    if (encoding.length(reply) > 1) send(conn.socket, encoding.toUint8Array(reply));
+    handleSync(conn, room, decoder);
     return;
   }
 
   if (type === MSG_AWARENESS) {
+    // Presence is allowed for every role, so a viewer still appears as present.
+    // Whether they publish a cursor is a client-side choice (R30, T3.1); it only
+    // affects visual noise, not the document.
     awarenessProtocol.applyAwarenessUpdate(room.awareness, decoding.readVarUint8Array(decoder), conn);
   }
 }
