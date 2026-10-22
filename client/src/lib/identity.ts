@@ -2,7 +2,7 @@
 // The server uses this for display and for role overrides, never as proof — see the
 // security posture section of REQUIREMENTS.md.
 
-import { COLORS } from '@shared/types';
+import { colorFor } from '@shared/types';
 import { createStore, readLocal, writeLocal } from './store';
 
 const KEY_USER = 'livecode.userId';
@@ -22,15 +22,6 @@ function newUserId(): string {
   const bytes = new Uint8Array(16);
   crypto.getRandomValues(bytes);
   return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
-}
-
-/** Stable per-person colour, so you look the same in every room (R28). */
-function colorFor(userId: string): string {
-  let hash = 0;
-  for (let i = 0; i < userId.length; i++) {
-    hash = (hash * 31 + userId.charCodeAt(i)) | 0;
-  }
-  return COLORS[Math.abs(hash) % COLORS.length];
 }
 
 function load(): Identity {

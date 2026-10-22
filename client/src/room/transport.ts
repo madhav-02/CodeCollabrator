@@ -36,6 +36,8 @@ export interface TransportOptions {
   me: Me;
   /** What the link claimed. A starting point, not an authority. */
   role: Role;
+  /** Whichever of the three tokens this link carried. */
+  token: string;
   defaultLanguage: string;
 }
 

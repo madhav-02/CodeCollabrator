@@ -115,3 +115,16 @@ export const DOC = {
  * and falls back if not, but both halves start from the same name.
  */
 export const DEFAULT_LANGUAGE = 'TypeScript';
+
+/**
+ * Stable colour for a person, derived from their id so both halves agree. If the
+ * server picked independently you would see yourself in one colour and everyone
+ * else would see you in another (R28).
+ */
+export function colorFor(userId: string): string {
+  let hash = 0;
+  for (let i = 0; i < userId.length; i++) {
+    hash = (hash * 31 + userId.charCodeAt(i)) | 0;
+  }
+  return COLORS[Math.abs(hash) % COLORS.length];
+}

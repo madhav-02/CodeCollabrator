@@ -3,6 +3,8 @@ import { WebSocketServer } from 'ws';
 import { LIMITS } from '@shared/types';
 import { config } from './config';
 import { handleHttp } from './http';
+import { handleJoin } from './join';
+import { originAllowed } from './origin';
 
 const server = createServer(handleHttp);
 
@@ -17,11 +19,15 @@ server.on('upgrade', (req, socket, head) => {
     return;
   }
 
-  // Origin checking, token verification and room routing arrive in T2.3. Until
-  // then the plumbing is in place but no connection is allowed to proceed.
-  wss.handleUpgrade(req, socket, head, (ws) => {
-    ws.close(1011, 'rooms not implemented yet');
-  });
+  // Refused before the upgrade completes, so a disallowed origin never gets a
+  // socket at all (N6).
+  if (!originAllowed(req.headers.origin)) {
+    socket.write('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n');
+    socket.destroy();
+    return;
+  }
+
+  wss.handleUpgrade(req, socket, head, (ws) => handleJoin(ws, req));
 });
 
 server.listen(config.port, config.host, () => {

@@ -8,6 +8,7 @@ import { Sheet } from '../components/Sheet';
 import { CodeEditor } from '../editor/CodeEditor';
 import { collabExtensions } from '../editor/collab';
 import { DEFAULT_LANGUAGE } from '../editor/languages';
+import { readHostToken } from '../lib/roomLink';
 import { useStore } from '../lib/store';
 import { theme } from '../lib/theme';
 import { NARROW, useMediaQuery } from '../lib/useMediaQuery';
@@ -27,7 +28,13 @@ const PANEL_TITLE: Record<PanelName, string> = {
 };
 
 export function RoomPage({ claimedRole }: Props) {
-  const { roomId } = useParams<{ roomId: string }>();
+  const { roomId, token: urlToken } = useParams<{ roomId: string; token: string }>();
+
+  // The host's token comes out of the URL fragment; the other two are in the path.
+  // Read once, because reading it also strips it from the address bar.
+  const [token] = useState(() =>
+    claimedRole === 'host' ? (readHostToken(roomId ?? '') ?? '') : (urlToken ?? ''),
+  );
 
   if (!roomId) return <Expired reason="notFound" />;
 
@@ -35,6 +42,7 @@ export function RoomPage({ claimedRole }: Props) {
     <RoomProvider
       roomId={roomId}
       claimedRole={claimedRole}
+      token={token}
       defaultLanguage={DEFAULT_LANGUAGE}
       fallback={<Shell roomId={roomId} message="Joining the room…" />}
     >

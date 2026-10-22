@@ -1,13 +1,25 @@
 // In-memory room store. There is no database: rooms are deleted an hour after the
 // last person leaves, so nothing outlives the process that is worth keeping (N2).
 
+import type { WebSocket } from 'ws';
+import { Awareness } from 'y-protocols/awareness';
 import * as Y from 'yjs';
-import { DOC, LIMITS, type ChatMessage, type Role } from '@shared/types';
+import { DOC, LIMITS, type ChatMessage, type Participant, type Role } from '@shared/types';
+import { attachRelay } from './sync';
 import { newRoomId, newToken, sameToken } from './tokens';
+
+export interface Connection extends Participant {
+  socket: WebSocket;
+  roomId: string;
+  /** Presence ids this connection owns, cleared when it drops. */
+  awarenessIds: Set<number>;
+}
 
 export interface Room {
   id: string;
   doc: Y.Doc;
+  /** Cursors and names. The server holds no presence of its own. */
+  awareness: Awareness;
   /** Possession of one of these is the whole authorization model. */
   tokens: { host: string; edit: string; view: string };
   /** Role changes made by the host, keyed by the browser's self-asserted id. */
@@ -16,6 +28,8 @@ export interface Room {
   removed: Set<string>;
   /** Held here rather than in the document so viewers can chat (R33, R35). */
   chat: ChatMessage[];
+  /** Live participants. The same person in two tabs counts twice (D5). */
+  connections: Set<Connection>;
   createdAt: number;
   /** When the room became empty, for the idle sweep in T5.1. */
   emptySince: number | null;
@@ -37,17 +51,24 @@ export function createRoom(defaultLanguage: string): Room {
   const doc = new Y.Doc();
   doc.getMap(DOC.meta).set('language', defaultLanguage);
 
+  const awareness = new Awareness(doc);
+  // The server relays presence but is not itself a participant.
+  awareness.setLocalState(null);
+
   const room: Room = {
     id: newRoomId(),
     doc,
+    awareness,
     tokens: { host: newToken(), edit: newToken(), view: newToken() },
     overrides: new Map(),
     removed: new Set(),
     chat: [],
+    connections: new Set(),
     createdAt: Date.now(),
     emptySince: Date.now(),
   };
 
+  attachRelay(room);
   rooms.set(room.id, room);
   return room;
 }
@@ -59,6 +80,7 @@ export function getRoom(id: string): Room | undefined {
 export function deleteRoom(id: string): void {
   const room = rooms.get(id);
   if (!room) return;
+  room.awareness.destroy();
   room.doc.destroy();
   rooms.delete(id);
 }
