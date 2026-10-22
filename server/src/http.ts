@@ -3,6 +3,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import { extname, join, normalize, resolve, sep } from 'node:path';
 import { DEFAULT_LANGUAGE, type CreateRoomResponse } from '@shared/types';
 import { config } from './config';
+import { allowRoomCreation } from './limits';
 import { TooManyRooms, createRoom, roomCount } from './rooms';
 
 const CONTENT_TYPES: Record<string, string> = {
@@ -41,7 +42,7 @@ export function handleHttp(req: IncomingMessage, res: ServerResponse): void {
       sendJson(res, 405, { error: 'use POST' });
       return;
     }
-    createRoomRequest(res);
+    createRoomRequest(req, res);
     return;
   }
 
@@ -60,7 +61,15 @@ export function handleHttp(req: IncomingMessage, res: ServerResponse): void {
   serveClient(url.pathname, res);
 }
 
-function createRoomRequest(res: ServerResponse): void {
+function createRoomRequest(req: IncomingMessage, res: ServerResponse): void {
+  // The peer address, not a forwarded header: those are trivially spoofed, which
+  // would make the limit decorative.
+  const address = req.socket.remoteAddress ?? 'unknown';
+  if (!allowRoomCreation(address)) {
+    sendJson(res, 429, { error: 'too many rooms created from here; try again later' });
+    return;
+  }
+
   try {
     const room = createRoom(DEFAULT_LANGUAGE);
 

@@ -2,6 +2,7 @@ import type { IncomingMessage } from 'node:http';
 import type { RawData, WebSocket } from 'ws';
 import { LIMITS, colorFor, type CloseReason } from '@shared/types';
 import { handleControlMessage } from './control';
+import { allowMessage } from './limits';
 import { closeRoom, getRoom, resolveRole, type Connection } from './rooms';
 import { broadcastRoster, cleanName } from './roster';
 import { clearPresence, handleBinary, sendInitialSync } from './sync';
@@ -57,6 +58,8 @@ export function handleJoin(socket: WebSocket, req: IncomingMessage): void {
     role,
     awarenessIds: new Set(),
     chatTimes: [],
+    msgTimes: [],
+    warnings: new Set(),
   };
 
   room.connections.add(conn);
@@ -74,6 +77,8 @@ export function handleJoin(socket: WebSocket, req: IncomingMessage): void {
   sendInitialSync(conn, room);
 
   socket.on('message', (data: RawData, isBinary: boolean) => {
+    if (!allowMessage(conn)) return;
+
     if (isBinary) {
       // Role is checked inside, per message kind (R18).
       handleBinary(conn, room, toBytes(data));

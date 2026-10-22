@@ -9,7 +9,9 @@ import * as decoding from 'lib0/decoding';
 import * as encoding from 'lib0/encoding';
 import * as awarenessProtocol from 'y-protocols/awareness';
 import * as syncProtocol from 'y-protocols/sync';
-import { canWrite } from '@shared/types';
+import * as Y from 'yjs';
+import { DOC, canWrite } from '@shared/types';
+import { allowDocumentWrite } from './limits';
 import type { Connection, Room } from './rooms';
 import { sendBinary as send, sendControl } from './wire';
 
@@ -66,13 +68,19 @@ function handleSync(conn: Connection, room: Room, decoder: decoding.Decoder): vo
     return;
   }
 
+  if (kind !== syncProtocol.messageYjsSyncStep2 && kind !== syncProtocol.messageYjsUpdate) {
+    return;
+  }
+
+  // Both kinds carry their payload the same way, so the size is known before any
+  // of it is applied (R16).
+  const update = decoding.readVarUint8Array(decoder);
+  const length = room.doc.getText(DOC.content).length;
+  if (!allowDocumentWrite(conn, length, update.byteLength)) return;
+
   // The connection is the transaction origin, so the relay does not echo the
   // update back to whoever sent it.
-  if (kind === syncProtocol.messageYjsSyncStep2) {
-    syncProtocol.readSyncStep2(decoder, room.doc, conn);
-  } else if (kind === syncProtocol.messageYjsUpdate) {
-    syncProtocol.readUpdate(decoder, room.doc, conn);
-  }
+  Y.applyUpdate(room.doc, update, conn);
 }
 
 export function handleBinary(conn: Connection, room: Room, data: Uint8Array): void {

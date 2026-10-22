@@ -23,6 +23,10 @@ export interface Connection extends Participant {
   awarenessIds: Set<number>;
   /** Timestamps of recent chat messages, for rate limiting (N7). */
   chatTimes: number[];
+  /** Timestamps of recent frames of any kind, for the overall rate cap (N7). */
+  msgTimes: number[];
+  /** Limit warnings already sent, so they are not repeated every message. */
+  warnings: Set<string>;
 }
 
 export interface Room {
