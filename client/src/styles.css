@@ -446,6 +446,39 @@ button {
   }
 }
 
+/* ---------- share dialog ---------- */
+
+.share-card {
+  max-width: 520px;
+}
+
+.share-row {
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+}
+
+.share-row-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.share-hint {
+  font-size: 12px;
+}
+
+.share-row-link {
+  display: flex;
+  gap: 8px;
+}
+
+.share-url {
+  font-size: 12px;
+  min-width: 0;
+}
+
 .modal-backdrop {
   position: fixed;
   inset: 0;

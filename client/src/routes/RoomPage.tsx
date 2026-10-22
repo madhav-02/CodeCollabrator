@@ -6,6 +6,7 @@ import { ConnectionStatus } from '../components/ConnectionStatus';
 import { Header } from '../components/Header';
 import { LanguagePicker } from '../components/LanguagePicker';
 import { Roster } from '../components/Roster';
+import { ShareMenu } from '../components/ShareMenu';
 import { Sheet } from '../components/Sheet';
 import { CodeEditor } from '../editor/CodeEditor';
 import { collabExtensions } from '../editor/collab';
@@ -92,6 +93,7 @@ function RoomView({ roomId }: { roomId: string }) {
     <div className="app">
       <Header roomId={roomId}>
         <ConnectionStatus status={status} />
+        <ShareMenu roomId={roomId} />
         <LanguagePicker
           value={language}
           onChange={transport.setLanguage}

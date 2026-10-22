@@ -98,7 +98,18 @@ export function handleControlMessage(conn: Connection, room: Room, raw: string):
       return;
     }
 
-    // Chat is T4.1, link sharing is T3.7.
+    case 'links': {
+      // Only the host may see the other two links (R19). They are never logged.
+      if (!requireHost(conn)) return;
+      sendControl(conn.socket, {
+        t: 'links',
+        edit: room.tokens.edit,
+        view: room.tokens.view,
+      });
+      return;
+    }
+
+    // Chat is T4.1.
     default:
       return;
   }
