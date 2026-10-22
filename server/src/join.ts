@@ -2,7 +2,7 @@ import type { IncomingMessage } from 'node:http';
 import type { RawData, WebSocket } from 'ws';
 import { LIMITS, colorFor, type CloseReason } from '@shared/types';
 import { handleControlMessage } from './control';
-import { getRoom, resolveRole, type Connection } from './rooms';
+import { closeRoom, getRoom, resolveRole, type Connection } from './rooms';
 import { broadcastRoster, cleanName } from './roster';
 import { clearPresence, handleBinary, sendInitialSync } from './sync';
 import { sendControl, toBytes, toText } from './wire';
@@ -78,14 +78,26 @@ export function handleJoin(socket: WebSocket, req: IncomingMessage): void {
   });
 
   socket.on('close', () => {
+    // The room may already be gone — the host could have ended it, which closes
+    // every socket including this one.
+    if (getRoom(room.id) !== room) return;
+
     clearPresence(conn, room);
     room.connections.delete(conn);
+    console.log(`[livecode] room ${room.id}: ${conn.name} left`);
+
+    // When the host leaves, the room goes with them (R23). Two tabs count as two
+    // connections, so closing one of them must not end the session.
+    if (conn.role === 'host' && ![...room.connections].some((c) => c.role === 'host')) {
+      closeRoom(room, 'hostLeft');
+      return;
+    }
+
     if (room.connections.size === 0) {
       // Start the idle countdown; the sweep itself is T5.1.
       room.emptySince = Date.now();
     } else {
       broadcastRoster(room);
     }
-    console.log(`[livecode] room ${room.id}: ${conn.name} left`);
   });
 }

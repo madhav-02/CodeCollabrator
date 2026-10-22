@@ -87,7 +87,26 @@ export function Roster() {
           Change your name
         </button>
       )}
+
+      {myRole === 'host' && <EndRoomButton />}
     </div>
+  );
+}
+
+function EndRoomButton() {
+  const transport = useTransport();
+
+  function end() {
+    // Irreversible, and it disconnects everyone, so it gets a confirmation (D7).
+    if (window.confirm('End this room for everyone? The code will be lost.')) {
+      transport.endRoom();
+    }
+  }
+
+  return (
+    <button className="btn btn-danger roster-end" onClick={end}>
+      End room
+    </button>
   );
 }
 

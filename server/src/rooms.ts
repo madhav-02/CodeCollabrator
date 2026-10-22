@@ -4,9 +4,17 @@
 import type { WebSocket } from 'ws';
 import { Awareness } from 'y-protocols/awareness';
 import * as Y from 'yjs';
-import { DOC, LIMITS, type ChatMessage, type Participant, type Role } from '@shared/types';
+import {
+  DOC,
+  LIMITS,
+  type ChatMessage,
+  type CloseReason,
+  type Participant,
+  type Role,
+} from '@shared/types';
 import { attachRelay } from './sync';
 import { newRoomId, newToken, sameToken } from './tokens';
+import { sendControl } from './wire';
 
 export interface Connection extends Participant {
   socket: WebSocket;
@@ -83,6 +91,22 @@ export function deleteRoom(id: string): void {
   room.awareness.destroy();
   room.doc.destroy();
   rooms.delete(id);
+}
+
+/**
+ * Tell everyone why, disconnect them, then drop the room (R22, R23).
+ *
+ * Order matters: the reason has to be sent before the socket closes, or the client
+ * falls back to a generic failure and tries to reconnect to a room that is gone.
+ */
+export function closeRoom(room: Room, reason: CloseReason): void {
+  for (const conn of [...room.connections]) {
+    sendControl(conn.socket, { t: 'closed', reason });
+    conn.socket.close(1000, reason);
+  }
+  room.connections.clear();
+  deleteRoom(room.id);
+  console.log(`[livecode] room ${room.id} closed (${reason})`);
 }
 
 /**

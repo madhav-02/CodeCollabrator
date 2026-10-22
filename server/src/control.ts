@@ -5,7 +5,7 @@
 // what the client claims (R17).
 
 import type { ClientControl, Role } from '@shared/types';
-import type { Connection, Room } from './rooms';
+import { closeRoom, type Connection, type Room } from './rooms';
 import { broadcastRoster, cleanName } from './roster';
 import { sendControl } from './wire';
 
@@ -91,7 +91,14 @@ export function handleControlMessage(conn: Connection, room: Room, raw: string):
       return;
     }
 
-    // End room is T3.4, chat is T4.1, link sharing is T3.7.
+    case 'end': {
+      if (!requireHost(conn)) return;
+      console.log(`[livecode] room ${room.id}: ended by ${conn.name}`);
+      closeRoom(room, 'ended');
+      return;
+    }
+
+    // Chat is T4.1, link sharing is T3.7.
     default:
       return;
   }

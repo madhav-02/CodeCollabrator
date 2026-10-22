@@ -386,6 +386,23 @@ button {
   padding: 5px 9px;
 }
 
+.btn-danger {
+  color: var(--danger);
+  border-color: var(--border);
+}
+
+.btn-danger:hover:not(:disabled) {
+  border-color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 8%, transparent);
+}
+
+.roster-end {
+  align-self: flex-start;
+  font-size: 12px;
+  padding: 5px 9px;
+  margin-top: 2px;
+}
+
 /* Chat grows and scrolls; the participant list keeps its natural height. */
 .panel-grow {
   flex: 1;
