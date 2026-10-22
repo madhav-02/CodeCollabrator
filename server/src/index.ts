@@ -1,10 +1,11 @@
 import { createServer } from 'node:http';
 import { WebSocketServer } from 'ws';
 import { LIMITS } from '@shared/types';
-import { config } from './config';
+import { config, sweepIntervalMs } from './config';
 import { handleHttp } from './http';
 import { handleJoin } from './join';
 import { originAllowed } from './origin';
+import { sweepIdleRooms } from './rooms';
 
 const server = createServer(handleHttp);
 
@@ -29,6 +30,15 @@ server.on('upgrade', (req, socket, head) => {
 
   wss.handleUpgrade(req, socket, head, (ws) => handleJoin(ws, req));
 });
+
+const sweeper = setInterval(() => {
+  const expired = sweepIdleRooms(config.idleRoomMs);
+  for (const id of expired) {
+    console.log(`[livecode] room ${id} expired after sitting empty`);
+  }
+}, sweepIntervalMs);
+// A pending sweep should not hold the process open on shutdown.
+sweeper.unref();
 
 server.listen(config.port, config.host, () => {
   console.log(`[livecode] http://${config.host}:${config.port}`);

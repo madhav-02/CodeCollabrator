@@ -87,6 +87,24 @@ export function getRoom(id: string): Room | undefined {
   return rooms.get(id);
 }
 
+/**
+ * Delete rooms that have been empty too long (R5). A room with anyone in it has
+ * `emptySince` of null and is never touched, however long it has been open — a
+ * class can run for three hours.
+ */
+export function sweepIdleRooms(maxIdleMs: number, now = Date.now()): string[] {
+  const expired: string[] = [];
+
+  for (const room of rooms.values()) {
+    if (room.emptySince === null) continue;
+    if (now - room.emptySince < maxIdleMs) continue;
+    expired.push(room.id);
+  }
+
+  for (const id of expired) deleteRoom(id);
+  return expired;
+}
+
 export function deleteRoom(id: string): void {
   const room = rooms.get(id);
   if (!room) return;
