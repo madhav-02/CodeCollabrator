@@ -111,8 +111,24 @@ button {
   font: inherit;
 }
 
+.select {
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  max-width: 160px;
+}
+
+.select:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .input:focus-visible,
-.btn:focus-visible {
+.btn:focus-visible,
+.select:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 1px;
 }
