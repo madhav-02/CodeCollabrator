@@ -1,6 +1,9 @@
 import { Suspense, lazy } from 'react';
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import { Header } from './components/Header';
+import { NamePrompt } from './components/NamePrompt';
+import { identity } from './lib/identity';
+import { useStore } from './lib/store';
 import { Home } from './routes/Home';
 import { Expired } from './routes/Expired';
 
@@ -23,6 +26,8 @@ function Loading() {
 }
 
 export function App() {
+  const { name } = useStore(identity);
+
   return (
     <BrowserRouter>
       <Suspense fallback={<Loading />}>
@@ -35,6 +40,9 @@ export function App() {
           <Route path="*" element={<Expired reason="notFound" />} />
         </Routes>
       </Suspense>
+      {/* Overlaid rather than replacing the page, so people can see what the site
+          is before being asked to name themselves (R25). */}
+      {!name && <NamePrompt />}
     </BrowserRouter>
   );
 }

@@ -269,6 +269,16 @@ button {
   }
 }
 
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.45);
+}
+
 .sheet-backdrop {
   position: fixed;
   inset: 0;
