@@ -176,6 +176,10 @@ button {
   background: var(--bg);
 }
 
+.editor-host {
+  height: 100%;
+}
+
 .side-panel {
   display: flex;
   flex-direction: column;

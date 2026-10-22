@@ -1,6 +1,8 @@
 import { useParams } from 'react-router-dom';
 import type { Role } from '@shared/types';
 import { Header } from '../components/Header';
+import { CodeEditor } from '../editor/CodeEditor';
+import { DEFAULT_LANGUAGE } from '../editor/languages';
 import { Expired } from './Expired';
 
 interface Props {
@@ -18,10 +20,10 @@ export function RoomPage({ claimedRole }: Props) {
       <Header roomId={roomId} />
       <div className="room-body">
         <div className="editor-pane">
-          <div className="placeholder">
-            Editor goes here (T1.2). This link claims the <strong>{claimedRole}</strong> role;
-            the server will decide the real one.
-          </div>
+          <CodeEditor
+            language={DEFAULT_LANGUAGE}
+            readOnly={claimedRole === 'viewer'}
+          />
         </div>
         <aside className="side-panel">
           <div className="panel-section">
