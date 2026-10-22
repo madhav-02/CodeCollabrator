@@ -3,6 +3,8 @@ import type { Role } from '@shared/types';
 import { Header } from '../components/Header';
 import { CodeEditor } from '../editor/CodeEditor';
 import { DEFAULT_LANGUAGE } from '../editor/languages';
+import { useStore } from '../lib/store';
+import { theme } from '../lib/theme';
 import { Expired } from './Expired';
 
 interface Props {
@@ -12,6 +14,7 @@ interface Props {
 
 export function RoomPage({ claimedRole }: Props) {
   const { roomId } = useParams<{ roomId: string }>();
+  const currentTheme = useStore(theme);
 
   if (!roomId) return <Expired reason="notFound" />;
 
@@ -22,6 +25,7 @@ export function RoomPage({ claimedRole }: Props) {
         <div className="editor-pane">
           <CodeEditor
             language={DEFAULT_LANGUAGE}
+            dark={currentTheme === 'dark'}
             readOnly={claimedRole === 'viewer'}
           />
         </div>
