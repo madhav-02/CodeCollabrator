@@ -192,3 +192,41 @@ WebSocket endpoint, so there is one deployable and no CORS to configure.
 Modest caps, all configurable, none security-critical — they stop one bored person from
 exhausting the box: room creation rate per address, total rooms, 25 connections per room,
 ~1 MB document, message size cap, per-connection message rate cap.
+
+---
+
+## 9. Known limitations
+
+Found while building, worth knowing before relying on any of it.
+
+**Refusing a Yjs update forks that client permanently.** Yjs positions reference
+neighbouring items, tombstones included, so once the server refuses an update every
+later edit from that same client depends on data the server will never hold. Those
+updates sit pending forever and that client is out of step until the page is
+reloaded. Other clients are unaffected.
+
+This is reachable two ways: a viewer whose browser read-only flag has been removed,
+and a document that has hit the 1 MB ceiling. Neither is reachable by ordinary use —
+a viewer's editor genuinely cannot be typed into — and the warning text tells the
+person to reload. It does mean a *tampering* viewer who is later promoted must
+reload before their edits take effect.
+
+**The idle sweep fires less often than it looks.** A host leaving ends the room
+outright (R23), so a room that ever had a host connected never reaches the one-hour
+idle rule. In practice the sweep collects rooms created and never entered, and rooms
+only ever occupied by editors and viewers. The hour-long rule is a backstop, not the
+usual path.
+
+**Rooms do not survive a restart**, by design (N2). A client reconnecting to a
+restarted server is told `notFound` and stops retrying, which is correct — the room
+really is gone.
+
+**Roles are defeatable by clearing browser storage**, since identity is
+self-asserted. See the security posture section of `REQUIREMENTS.md`.
+
+**The bottom sheet has no focus trap**, so Tab can reach the editor behind it. It
+closes on Escape and on a backdrop tap, so nobody is stuck.
+
+**Untested in a real browser**: cursor rendering, the mobile layout, the reconnect
+loop end to end, and `100dvh` against the iOS keyboard. Every mechanism underneath
+them is verified over the wire or in isolation; their composition in a browser is not.
