@@ -1,14 +1,14 @@
 import { useState, type FormEvent } from 'react';
-import type { Role } from '@shared/types';
+import type { Participant, Role } from '@shared/types';
 import { MAX_NAME_LENGTH, identity, setName } from '../lib/identity';
 import { useStore } from '../lib/store';
-import { useRoom } from '../room/RoomContext';
+import { useRoom, useTransport } from '../room/RoomContext';
 
 /** Host first, then editors, then viewers (R31). */
 const ROLE_ORDER: Record<Role, number> = { host: 0, editor: 1, viewer: 2 };
 
 export function Roster() {
-  const { participants, status } = useRoom();
+  const { participants, status, role: myRole } = useRoom();
   const me = useStore(identity);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState('');
@@ -36,25 +36,25 @@ export function Roster() {
   return (
     <div className="roster">
       <ul className="roster-list">
-        {sorted.map((person, index) => {
-          const isMe = person.userId === me.userId;
-          return (
-            // The same person in two tabs is two entries (D5), so the id alone
-            // is not a unique key.
-            <li className="roster-row" key={`${person.userId}-${index}`}>
-              <span
-                className="roster-dot"
-                style={{ background: person.color }}
-                aria-hidden="true"
-              />
-              <span className="roster-name" title={person.name}>
-                {person.name}
-                {isMe && <span className="muted"> (you)</span>}
-              </span>
-              <span className={`roster-role roster-role-${person.role}`}>{person.role}</span>
-            </li>
-          );
-        })}
+        {sorted.map((person, index) => (
+          // The same person in two tabs is two entries (D5), so the id alone is
+          // not a unique key.
+          <li className="roster-row" key={`${person.userId}-${index}`}>
+            <span
+              className="roster-dot"
+              style={{ background: person.color }}
+              aria-hidden="true"
+            />
+            <span className="roster-name" title={person.name}>
+              {person.name}
+              {person.userId === me.userId && <span className="muted"> (you)</span>}
+            </span>
+            <span className={`roster-role roster-role-${person.role}`}>{person.role}</span>
+            {myRole === 'host' && person.userId !== me.userId && person.role !== 'host' && (
+              <HostActions person={person} />
+            )}
+          </li>
+        ))}
       </ul>
 
       {editing ? (
@@ -88,5 +88,48 @@ export function Roster() {
         </button>
       )}
     </div>
+  );
+}
+
+function HostActions({ person }: { person: Participant }) {
+  const transport = useTransport();
+
+  function remove() {
+    // Removal bars them for the rest of the room's life, so it is worth a pause.
+    if (window.confirm(`Remove ${person.name} from the room? They cannot rejoin.`)) {
+      transport.remove(person.userId);
+    }
+  }
+
+  return (
+    <span className="roster-actions">
+      {person.role === 'viewer' ? (
+        <button
+          className="roster-action"
+          onClick={() => transport.promote(person.userId)}
+          title={`Let ${person.name} edit`}
+          aria-label={`Let ${person.name} edit`}
+        >
+          ↑
+        </button>
+      ) : (
+        <button
+          className="roster-action"
+          onClick={() => transport.demote(person.userId)}
+          title={`Make ${person.name} view-only`}
+          aria-label={`Make ${person.name} view-only`}
+        >
+          ↓
+        </button>
+      )}
+      <button
+        className="roster-action roster-action-danger"
+        onClick={remove}
+        title={`Remove ${person.name}`}
+        aria-label={`Remove ${person.name}`}
+      >
+        ✕
+      </button>
+    </span>
   );
 }

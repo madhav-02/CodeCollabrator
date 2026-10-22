@@ -331,6 +331,42 @@ button {
   color: var(--accent);
 }
 
+.roster-actions {
+  display: flex;
+  gap: 2px;
+  flex: 0 0 auto;
+}
+
+.roster-action {
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  background: none;
+  color: var(--text-dim);
+  font-size: 12px;
+  line-height: 1;
+}
+
+.roster-action:hover {
+  border-color: var(--border);
+  background: var(--bg);
+  color: var(--text);
+}
+
+.roster-action-danger:hover {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.roster-action:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
 .roster-rename {
   display: flex;
   flex-direction: column;
