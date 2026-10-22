@@ -81,8 +81,8 @@ function RoomView({ roomId }: { roomId: string }) {
   const currentTheme = useStore(theme);
   const narrow = useMediaQuery(NARROW);
   const [openPanel, setOpenPanel] = useState<PanelName | null>(null);
-  // Stable for the room's lifetime; the editor reads it once, on mount.
-  const collab = useMemo(() => collabExtensions(transport), [transport]);
+  // Rebuilt if the role changes, since that decides whether we publish a cursor.
+  const collab = useMemo(() => collabExtensions(transport, role), [transport, role]);
 
   // The room is gone; say why rather than showing an empty editor (R7).
   if (closed) return <Expired reason={closed} />;
@@ -103,6 +103,10 @@ function RoomView({ roomId }: { roomId: string }) {
       <div className="room-body">
         <div className="editor-pane">
           <CodeEditor
+            // The editor reads its extensions once, so a role change has to
+            // remount it. Costs the local undo history, which is acceptable for
+            // something as rare as being promoted or demoted.
+            key={role}
             language={language}
             dark={currentTheme === 'dark'}
             readOnly={!mayWrite}

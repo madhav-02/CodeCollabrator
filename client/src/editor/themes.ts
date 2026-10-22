@@ -39,6 +39,38 @@ const surface = EditorView.theme({
   },
 });
 
+/**
+ * Overrides for the collaborative cursor layer (R29).
+ *
+ * y-codemirror.next hides the name label until you hover the caret, which is no
+ * use when the point is knowing at a glance who is where. These make labels
+ * permanently visible and give them the app's own typography instead of the
+ * library's serif default.
+ */
+export const remoteCursorTheme = EditorView.theme({
+  '.cm-ySelectionCaret': {
+    position: 'relative',
+  },
+  '.cm-ySelectionInfo': {
+    opacity: '1',
+    transitionDelay: '0s',
+    top: '-1.35em',
+    left: '-1px',
+    padding: '1px 4px',
+    borderRadius: '3px 3px 3px 0',
+    fontFamily: 'var(--font-ui)',
+    fontSize: '10px',
+    fontWeight: '600',
+    letterSpacing: '0.01em',
+    color: '#fff',
+    // Labels sit over the line above; never let them swallow clicks.
+    pointerEvents: 'none',
+  },
+  '.cm-ySelectionCaret:hover > .cm-ySelectionInfo': {
+    opacity: '1',
+  },
+});
+
 export function editorTheme(dark: boolean): Extension {
   // oneDark bundles its own highlight style; `surface` follows to win on background.
   return dark
