@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { canWrite, type Role } from '@shared/types';
+import { canWrite } from '@shared/types';
+import type { Role } from '@shared/types';
 import { Header } from '../components/Header';
 import { LanguagePicker } from '../components/LanguagePicker';
 import { Sheet } from '../components/Sheet';
@@ -9,6 +10,7 @@ import { DEFAULT_LANGUAGE } from '../editor/languages';
 import { useStore } from '../lib/store';
 import { theme } from '../lib/theme';
 import { NARROW, useMediaQuery } from '../lib/useMediaQuery';
+import { RoomProvider, useRoom, useTransport } from '../room/RoomContext';
 import { Expired } from './Expired';
 
 interface Props {
@@ -23,30 +25,66 @@ const PANEL_TITLE: Record<PanelName, string> = {
   chat: 'Chat',
 };
 
-function PanelBody({ name }: { name: PanelName }) {
-  return name === 'people' ? (
-    <div className="placeholder">Participants go here (T3.2).</div>
-  ) : (
-    <div className="placeholder">Chat goes here (T4.2).</div>
-  );
-}
-
 export function RoomPage({ claimedRole }: Props) {
   const { roomId } = useParams<{ roomId: string }>();
-  const currentTheme = useStore(theme);
-  const narrow = useMediaQuery(NARROW);
-  // Local for now. T3.6 makes it a shared room setting (R13).
-  const [language, setLanguage] = useState(DEFAULT_LANGUAGE);
-  const [openPanel, setOpenPanel] = useState<PanelName | null>(null);
 
   if (!roomId) return <Expired reason="notFound" />;
 
-  const mayWrite = canWrite(claimedRole);
+  return (
+    <RoomProvider
+      roomId={roomId}
+      claimedRole={claimedRole}
+      defaultLanguage={DEFAULT_LANGUAGE}
+      fallback={<Shell roomId={roomId} message="Joining the room…" />}
+    >
+      <RoomView roomId={roomId} />
+    </RoomProvider>
+  );
+}
+
+function Shell({ roomId, message }: { roomId: string; message: string }) {
+  return (
+    <div className="app">
+      <Header roomId={roomId} />
+      <div className="centre">
+        <p className="muted">{message}</p>
+      </div>
+    </div>
+  );
+}
+
+function PanelBody({ name }: { name: PanelName }) {
+  const { participants, chat } = useRoom();
+
+  return name === 'people' ? (
+    <div className="placeholder">
+      {participants.length} here. Participant list arrives in T3.2.
+    </div>
+  ) : (
+    <div className="placeholder">{chat.length} messages. Chat UI arrives in T4.2.</div>
+  );
+}
+
+function RoomView({ roomId }: { roomId: string }) {
+  const transport = useTransport();
+  const { role, language, closed } = useRoom();
+  const currentTheme = useStore(theme);
+  const narrow = useMediaQuery(NARROW);
+  const [openPanel, setOpenPanel] = useState<PanelName | null>(null);
+
+  // The room is gone; say why rather than showing an empty editor (R7).
+  if (closed) return <Expired reason={closed} />;
+
+  const mayWrite = canWrite(role);
 
   return (
     <div className="app">
       <Header roomId={roomId}>
-        <LanguagePicker value={language} onChange={setLanguage} disabled={!mayWrite} />
+        <LanguagePicker
+          value={language}
+          onChange={transport.setLanguage}
+          disabled={!mayWrite}
+        />
       </Header>
 
       <div className="room-body">
