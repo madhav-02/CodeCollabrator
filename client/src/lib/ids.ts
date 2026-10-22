@@ -12,4 +12,3 @@ export function randomId(length: number): string {
   return out;
 }
 
-export const newRoomId = () => randomId(10);

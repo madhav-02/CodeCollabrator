@@ -109,3 +109,9 @@ export const DOC = {
   /** Y.Map: room settings, currently just `language` */
   meta: 'meta',
 } as const;
+
+/**
+ * Language a new room starts in. The client checks a grammar actually exists for it
+ * and falls back if not, but both halves start from the same name.
+ */
+export const DEFAULT_LANGUAGE = 'TypeScript';

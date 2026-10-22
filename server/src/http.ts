@@ -1,7 +1,9 @@
 import { createReadStream, statSync } from 'node:fs';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { extname, join, normalize, resolve, sep } from 'node:path';
+import { DEFAULT_LANGUAGE, type CreateRoomResponse } from '@shared/types';
 import { config } from './config';
+import { TooManyRooms, createRoom, roomCount } from './rooms';
 
 const CONTENT_TYPES: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',
@@ -30,11 +32,19 @@ export function handleHttp(req: IncomingMessage, res: ServerResponse): void {
   const url = new URL(req.url ?? '/', `http://${config.host}`);
 
   if (url.pathname === '/api/health') {
-    sendJson(res, 200, { ok: true, rooms: 0 });
+    sendJson(res, 200, { ok: true, rooms: roomCount() });
     return;
   }
 
-  // Room creation lands in T2.2.
+  if (url.pathname === '/api/rooms') {
+    if (req.method !== 'POST') {
+      sendJson(res, 405, { error: 'use POST' });
+      return;
+    }
+    createRoomRequest(res);
+    return;
+  }
+
   if (url.pathname.startsWith('/api/')) {
     sendJson(res, 404, { error: 'not found' });
     return;
@@ -48,6 +58,30 @@ export function handleHttp(req: IncomingMessage, res: ServerResponse): void {
   }
 
   serveClient(url.pathname, res);
+}
+
+function createRoomRequest(res: ServerResponse): void {
+  try {
+    const room = createRoom(DEFAULT_LANGUAGE);
+
+    // This response body is nothing but secrets, so it is never logged (N8) and
+    // never cached (sendJson sets no-store).
+    const body: CreateRoomResponse = {
+      roomId: room.id,
+      hostToken: room.tokens.host,
+      editToken: room.tokens.edit,
+      viewToken: room.tokens.view,
+    };
+
+    console.log(`[livecode] room ${room.id} created (${roomCount()} open)`);
+    sendJson(res, 201, body);
+  } catch (err) {
+    if (err instanceof TooManyRooms) {
+      sendJson(res, 503, { error: 'too many rooms open' });
+      return;
+    }
+    throw err;
+  }
 }
 
 function isFile(path: string): boolean {

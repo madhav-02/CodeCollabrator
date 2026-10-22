@@ -3,6 +3,7 @@
 
 import { languages } from '@codemirror/language-data';
 import type { LanguageDescription } from '@codemirror/language';
+import { DEFAULT_LANGUAGE as PREFERRED } from '@shared/types';
 
 /** Shown first. Anything missing upstream is skipped rather than breaking the list. */
 const PINNED = [
@@ -33,9 +34,8 @@ export const languageOptions: LanguageDescription[] = (() => {
   return [...pinned, ...rest];
 })();
 
-export const DEFAULT_LANGUAGE = byName.has('TypeScript')
-  ? 'TypeScript'
-  : languageOptions[0].name;
+/** The server's default, unless no grammar ships for it. */
+export const DEFAULT_LANGUAGE = byName.has(PREFERRED) ? PREFERRED : languageOptions[0].name;
 
 export function findLanguage(name: string): LanguageDescription | undefined {
   return byName.get(name);
